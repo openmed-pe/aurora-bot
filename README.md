@@ -1,1 +1,1 @@
-# Maggie Bot
+# Aurora Bot
