@@ -22,9 +22,11 @@ export class ChatsController {
   }
 
   async listByNumber(req: Request, res: Response) {
-    const number = parseInt(req.params.number);
+    const number = req.params.number;
     try {
-      const chats = await chatService.getByNumber(number);
+      //const chats = await chatService.getByNumber(number);
+      const chats = await chatService.getByUserIdandState(number, "Chatting");
+
       res.status(200).json({
         status: 200,
         data: chats,
@@ -39,10 +41,10 @@ export class ChatsController {
   async insert(req: Request, res: Response) {
     //const body = req.body;
     const data: Partial<IChat> = {
-      number: req.body.number,
-      name: req.body.name,
+      userId: req.body.userId,
+      threadId: req.body.threadId,
       messages: req.body.messages,
-      created_at: new Date(),
+      createdAt: new Date(),
       state: req.body.state,
     };
     try {

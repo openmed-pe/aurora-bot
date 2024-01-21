@@ -6,10 +6,11 @@ export interface IMessage {
 
 export interface IChat {
   _id: string;
-  number: string;
-  name: string;
+  userId: string;
+  threadId: string;
+  threadStatus: string;
   messages: IMessage[];
-  created_at?: Date;
-  updated_at?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
   state: string;
 }

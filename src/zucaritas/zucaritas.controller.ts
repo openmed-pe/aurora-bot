@@ -1,87 +1,121 @@
 import { Request, Response } from "express";
 import yenv from "yenv";
-import { ZucaritasModel } from "./zucaritas.model";
 import { GptController } from "../gpt/gpt.controller";
-import { ChatsController } from "../chats/chats.controller";
 import { ChatService } from "../chats/chats.service";
-import { IChat } from "../chats/chats.interface";
+import { IChat, IMessage } from "../chats/chats.interface";
 import { ZucaritasService } from "./zucaritas.service";
+import { UserService } from "../users/users.service";
+import { IUser } from "../users/users.interface";
 
 const env = yenv();
 const gptController = new GptController();
 const chatsService = new ChatService();
+const userService = new UserService();
 const zucaritasService = new ZucaritasService();
 
 export class ZucaritasController {
   async events(req: Request, res: Response) {
-    //console.log(JSON.stringify(req.body, null, 2));
-    // const zucaritas: ZucaritasModel = {
-    //   name: req.body.entry[0].changes[0].value.contacts[0].profile.name,
-    //   number: req.body.entry[0].changes[0].value.contacts[0].wa_id,
-    //   message: req.body.entry[0].changes[0].value.messages[0].text.body,
-    //   timestamp: req.body.entry[0].changes[0].value.messages[0].timestamp,
-    // };
     if (req.body.object) {
       if (req.body.entry[0].changes[0].value.messages) {
-        console.log(
-          "MESSAGE EVENT",
-          JSON.stringify(req.body.entry[0].changes[0].value.messages, null, 2)
-        );
-
-        const currentMessage = {
-          role: "user",
-          content: req.body.entry[0].changes[0].value.messages[0].text.body,
-        };
-        const data: Partial<IChat> = {
-          number: req.body.entry[0].changes[0].value.contacts[0].wa_id,
-          name: req.body.entry[0].changes[0].value.contacts[0].profile.name,
-          state: "IN PROGRESS",
-        };
+        // console.log(
+        //   "MESSAGE EVENT",
+        //   JSON.stringify(req.body.entry[0].changes[0].value.messages, null, 2)
+        // );
         res.sendStatus(200);
-        var chat = await chatsService.getByNumber(
-          parseInt(req.body.entry[0].changes[0].value.contacts[0].wa_id)
-        );
-        if (chat != null) {
-          await chatsService.pushMessage(chat._id, currentMessage);
-          chat.messages.push(currentMessage);
-        } else {
-          data.messages = [currentMessage];
-          chat = await chatsService.insert(data);
-        }
+        if (req.body.entry[0].changes[0].value.messages[0].type == "text") {
+          const currentMessage: IMessage = {
+            role: "user",
+            content: req.body.entry[0].changes[0].value.messages[0].text.body,
+          };
+          console.log("USER: ", currentMessage.content);
+          var user = await userService.getByNumber(
+            parseInt(req.body.entry[0].changes[0].value.contacts[0].wa_id)
+          );
+          if (user == null) {
+            const userData: Partial<IUser> = {
+              phone: req.body.entry[0].changes[0].value.contacts[0].wa_id,
+              phoneName:
+                req.body.entry[0].changes[0].value.contacts[0].profile.name,
+            };
+            user = await userService.insert(userData);
+          }
 
-        // Generate the response
-        const response = await gptController.generateResponse(chat.messages);
-        if (response) {
-          await chatsService.pushMessage(chat._id, response);
+          var chat = await chatsService.getByUserIdandState(
+            user._id,
+            "Chatting"
+          );
+          if (chat == null) {
+            const thread = await gptController.generateThreads(user);
+            const chatData: Partial<IChat> = {
+              userId: user._id,
+              threadId: thread.id,
+              threadStatus: "New",
+              messages: [currentMessage],
+              state: "Chatting",
+            };
+            chat = await chatsService.insert(chatData);
+            await userService.pushChat(user._id, chat._id);
+          } else {
+            const aux = await chatsService.pushMessage(
+              chat._id,
+              currentMessage
+            );
+          }
+
+          if (chat.threadStatus == "Busy") {
+            const response =
+              "Lo siento, nuestra AI esta ocupada generando la respuesta del mensaje previo";
+            const resFinal = await zucaritasService.sendMessage(
+              response,
+              req.body.entry[0].changes[0].value.metadata.phone_number_id,
+              req.body.entry[0].changes[0].value.messages[0].from
+            );
+            console.log("GPT: ", response);
+          } else {
+            // Generate the response
+            await chatsService.updateThread(chat._id, "Busy");
+            var response = await gptController.generateNewResponse(
+              user,
+              chat,
+              currentMessage.content
+            );
+            var i = 1;
+            while (response == "FAIL") {
+              console.log("INTENTO: ", i);
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              response = await gptController.generateNewResponse(
+                user,
+                chat,
+                "?"
+              );
+              i = i + 1;
+            }
+            const iresponse = {
+              role: "assistant",
+              content: response,
+            };
+
+            await chatsService.pushMessage(chat._id, iresponse);
+            console.log("GPT RESPONSE", JSON.stringify(response, null, 2));
+            await chatsService.updateThread(chat._id, "Free");
+            const resFinal = await zucaritasService.sendMessage(
+              response,
+              req.body.entry[0].changes[0].value.metadata.phone_number_id,
+              req.body.entry[0].changes[0].value.messages[0].from
+            );
+          }
+        } else {
+          console.log("I can't read this type of message");
         }
-        //const response = "Hi, I got your message";
-        console.log("GPT RESPONSE", response);
-        // Save the response
-        //await chatsService.pushMessage(chat._id, response);
-        // Send response to wsp
-        const resFinal = await zucaritasService.sendMessage(
-          response.content,
-          req.body.entry[0].changes[0].value.metadata.phone_number_id,
-          req.body.entry[0].changes[0].value.messages[0].from
-        );
-        // if (resFinal) {
-        //   res.sendStatus(200);
-        // }
       } else if (req.body.entry[0].changes[0].value.statuses) {
-        console.log(
-          "STATUS MESSAGE EVENT",
-          JSON.stringify(req.body.entry[0].changes[0].value.statuses, null, 2)
-        );
         res.sendStatus(200);
       } else {
-        console.log("UNRECOGNICED EVENT", JSON.stringify(req.body, null, 2));
-        res.sendStatus(501);
+        console.log("UNRECOGNICED EVENT: ", JSON.stringify(req.body, null, 2));
+        res.sendStatus(200);
       }
     } else {
       res.sendStatus(404);
     }
-
-    //console.log(resFinal);
   }
 
   validate(req: Request, res: Response) {
