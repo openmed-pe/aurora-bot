@@ -1,142 +1,85 @@
 import { Request, Response } from "express";
 import { OpenAI } from "openai";
 import yenv from "yenv";
-import { GptDataModel, NameFuntions } from "./gpt.model";
-import { resolve } from "path";
-import {
-  ShowProducts,
-  SaveOrder,
-  AddProduct,
-  UpdateProduct,
-  ShowOrder,
-  AddUserInfo,
-  DeleteProduct,
-} from "../gpt/gpt.functions";
-import { IChat } from "../chats/chats.interface";
-import { IUser } from "../users/users.interface";
+import { AssistantDataModel } from "./assistant.model";
 
 const env = yenv();
+
+var data: AssistantDataModel = {
+  products: null,
+  location: null,
+  confirm: null,
+  completed: false,
+};
+
+async function atendanceFuntions() {
+  function checkCompletion() {
+    if (data.products) {
+      const hasCompletedData =
+        data.products.length > 0 && data.location !== null && data.confirm;
+      data.completed = hasCompletedData;
+    } else {
+      data.completed = false;
+    }
+  }
+  function identifyProducts(params: any) {
+    console.log("identifyProducts: ", params);
+    if (params.products) {
+      data.products = params.products;
+    }
+  }
+  function identifyLocation(params: any) {
+    console.log("identifyLocation: ", params);
+    if (data.products) {
+      const required = data.products.length > 0;
+      if (required && params.location) {
+        data.location = params.location;
+      }
+    }
+  }
+  function confirm(params: any) {
+    console.log("confirm: ", params);
+    if ("confirm" in params) {
+      data.confirm = params.confirm;
+    }
+  }
+
+  function build() {
+    checkCompletion();
+    return {
+      data,
+    };
+  }
+
+  return {
+    data,
+    identifyProducts,
+    identifyLocation,
+    confirm,
+    build,
+  };
+}
+
 const openAi = new OpenAI({
   apiKey: env.GPT.TOKEN,
 });
 
-var global = {
-  showProducts: ShowProducts,
-  saveOrder: SaveOrder,
-  addProduct: AddProduct,
-  updateProduct: UpdateProduct,
-  showOrder: ShowOrder,
-  addUserInfo: AddUserInfo,
-  deleteProduct: DeleteProduct,
-};
+export class AssistantController {
+  async generateThreads(req: Request, res: Response) {
+    console.log("generate thread");
+    const thread = await openAi.beta.threads.create();
+    console.log("generate thread 2", thread);
 
-export class GptController {
-  async generateThreads(user: IUser) {
-    const thread = await openAi.beta.threads.create({
-      metadata: { userName: user.phoneName, orders: 0 },
-    });
-    return thread;
-  }
-
-  async retrieveThreads(req: Request, res: Response) {
-    console.log(req.params);
-    try {
-      const thread = await openAi.beta.threads.retrieve(req.params.id);
-      res.status(200).json({
-        status: 200,
-        data: thread,
-        message: "THREAD_LISTED_BYID",
-      });
-    } catch (error) {
-      console.log(error);
-      res.status(500).json("ERROR_GETTING_THREAD");
-    }
-  }
-
-  async generateNewResponse(user: IUser, chat: IChat, content: string) {
     const threadMessages = await openAi.beta.threads.messages.create(
-      chat.threadId,
-      {
-        role: "user",
-        content: content,
-      }
+      thread.id,
+      { role: "user", content: "How does AI work? Explain it in simple terms." }
     );
-    // console.log("threadMessages : ", JSON.stringify(threadMessages, null, 2));
 
-    const run = await openAi.beta.threads.runs.create(chat.threadId, {
+    const run = await openAi.beta.threads.runs.create(thread.id, {
       assistant_id: env.GPT.ID,
     });
-    // console.log("RUN THREAD: ", JSON.stringify(run, null, 2));
 
-    let runStatus = await openAi.beta.threads.runs.retrieve(
-      chat.threadId,
-      run.id
-    );
-    while (runStatus.status !== "completed") {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      runStatus = await openAi.beta.threads.runs.retrieve(
-        chat.threadId,
-        run.id
-      );
-
-      if (runStatus.status === "requires_action") {
-        //console.log(runStatus.required_action.submit_tool_outputs.tool_calls);
-        const toolCalls =
-          runStatus.required_action.submit_tool_outputs.tool_calls;
-        const toolOutputs = [];
-
-        for (const toolCall of toolCalls) {
-          const functionName: NameFuntions = toolCall.function
-            .name as NameFuntions;
-          console.log(
-            `This question requires us to call a function: ${functionName}`
-          );
-          const args = JSON.parse(toolCall.function.arguments);
-
-          const argsArray = Object.keys(args).map((key) => args[key]);
-
-          // Dynamically call the function with arguments
-          //const output = await global[functionName].apply(null, [args]);
-
-          const output = await global[functionName](args, chat, user);
-          console.log("OUTPUT: ", output);
-          toolOutputs.push({
-            tool_call_id: toolCall.id,
-            output: output,
-          });
-        }
-        // Submit tool outputs
-        await openAi.beta.threads.runs.submitToolOutputs(
-          chat.threadId,
-          run.id,
-          {
-            tool_outputs: toolOutputs,
-          }
-        );
-        continue; // Continue polling for the final response
-      }
-
-      // Check for failed, cancelled, or expired status
-      if (["failed", "cancelled", "expired"].includes(runStatus.status)) {
-        console.log(
-          `Run status is '${runStatus.status}'. Unable to complete the request.`
-        );
-        break; // Exit the loop if the status indicates a failure or cancellation
-      }
-    }
-
-    const response = await openAi.beta.threads.messages.list(chat.threadId);
-    const lastResponse: any = response.data
-      .filter(
-        (message) => message.run_id === run.id && message.role === "assistant"
-      )
-      .pop();
-    //console.log("LAST RESPONSE: ", lastResponse);
-    if (lastResponse) {
-      return lastResponse.content[0].text.value;
-    } else {
-      return "FAIL";
-    }
+    return thread;
   }
 
   // async generateResponse(chatHistory: any) {

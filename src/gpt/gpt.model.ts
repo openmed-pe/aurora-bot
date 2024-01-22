@@ -6,7 +6,9 @@ export interface GptDataModel {
 }
 
 export type NameFuntions =
-  | "identifyProducts"
-  | "identifyLocation"
-  | "confirm"
-  | "build";
+  | "showProducts"
+  | "saveOrder"
+  | "addProduct"
+  | "updateProduct"
+  | "showOrder"
+  | "deleteProduct";

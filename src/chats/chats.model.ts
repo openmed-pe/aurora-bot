@@ -2,11 +2,12 @@ import { Schema, model } from "mongoose";
 import { IChat, IMessage } from "./chats.interface";
 
 const ChatSchema = new Schema<IChat>({
-  number: { type: String, required: true, trim: true },
-  name: { type: String, required: true, trim: true },
+  userId: { type: String, required: true, trim: true },
+  threadId: { type: String, required: true, trim: true },
+  threadStatus: { type: String, required: true, trim: true },
   messages: { type: [], required: true, trim: true },
-  created_at: { type: Date, trim: true },
-  updated_at: { type: String, trim: true },
+  createdAt: { type: Date, trim: true },
+  updatedAt: { type: Date, trim: true },
   state: { type: String, required: true, trim: true },
 });
 
