@@ -7,3 +7,4 @@ dist/
 node_modules/
 /help
 help.md
+testserver.pem
