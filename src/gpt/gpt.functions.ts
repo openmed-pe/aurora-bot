@@ -2,21 +2,17 @@ import { IChat } from "../chats/chats.interface";
 import { ChatService } from "../chats/chats.service";
 import { IOrder, IProduct } from "../orders/orders.interface";
 import { OrderService } from "../orders/orders.service";
+import { ProductsService } from "../products/products.service";
 import { IUser } from "../users/users.interface";
 import { UserService } from "../users/users.service";
-import { GptDataModel, NameFuntions } from "./gpt.model";
 import axios from "axios";
 
 const orderService = new OrderService();
 const chatService = new ChatService();
 const userService = new UserService();
+const productService = new ProductsService();
 
-var data: GptDataModel = {
-  products: null,
-  location: null,
-  confirm: null,
-  completed: false,
-};
+
 
 export async function ShowProducts(params: any, chat: IChat, user: IUser) {
   const product = params.product;
@@ -206,6 +202,25 @@ export async function SaveOrder(params: any, chat: IChat, user: IUser) {
   }
 }
 
+export async function QuoteProducts(params: any, chat: IChat, user: IUser) {
+  console.log(JSON.stringify(params, null, 2));
+  const searchText = params.product;
+
+  try {
+    const products = await productService.quoteProducts(searchText);
+    const response = {
+      products,
+      totalAmount: products.reduce((total, product) => total + product.price, 0),
+
+    };
+    console.log("Matching orders:", response);
+    return JSON.stringify(response);
+
+  } catch (error) {
+    console.log("Error quoting order:", error);
+  }
+}
+
 /*
 {
       ruc: "33333333333",
@@ -247,18 +262,3 @@ export async function SaveOrder(params: any, chat: IChat, user: IUser) {
       ],
     };
 */
-//   function identifyLocation(params: any) {
-//     console.log("identifyLocation: ", params);
-//     if (data.products) {
-//       const required = data.products.length > 0;
-//       if (required && params.location) {
-//         data.location = params.location;
-//       }
-//     }
-//   }
-//   function confirm(params: any) {
-//     console.log("confirm: ", params);
-//     if ("confirm" in params) {
-//       data.confirm = params.confirm;
-//     }
-//   }

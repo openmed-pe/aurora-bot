@@ -11,4 +11,6 @@ export type NameFuntions =
   | "addProduct"
   | "updateProduct"
   | "showOrder"
-  | "deleteProduct";
+  | "deleteProduct"
+  | "addUserInfo"
+  | "quoteProducts";

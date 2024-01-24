@@ -11,6 +11,7 @@ import {
   ShowOrder,
   AddUserInfo,
   DeleteProduct,
+  QuoteProducts,
 } from "../gpt/gpt.functions";
 import { IChat } from "../chats/chats.interface";
 import { IUser } from "../users/users.interface";
@@ -28,7 +29,8 @@ var global = {
   showOrder: ShowOrder,
   addUserInfo: AddUserInfo,
   deleteProduct: DeleteProduct,
-};
+  quoteProducts: QuoteProducts
+} satisfies Record<NameFuntions, any>;
 
 export class GptController {
   async generateThreads(user: IUser) {
