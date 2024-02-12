@@ -23,7 +23,7 @@ export async function ShowMedicines(params: any, chat: IChat, user: IUser) {
       method: "GET",
       url: url,
       headers: {
-        Authorization: `Bearer {{access_token}}`,
+        botAuth: env.BOT.AUTH,
       },
     });
     console.log(JSON.stringify(response.data, null, 2));
