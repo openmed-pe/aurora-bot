@@ -15,15 +15,15 @@ const userService = new UserService();
 const productService = new ProductsService();
 
 export async function ShowMedicines(params: any, chat: IChat, user: IUser) {
-  const product = params.product;
+  const medicine = params.medicine;
 
   try {
-    const url = `${env.API.PORTAL_PATH}/products/search/${product}`;
+    const url = `${env.API.PORTAL_PATH}/products/search/${medicine}`;
     const response = await axios({
       method: "GET",
       url: url,
       headers: {
-        botAuth: env.BOT.AUTH,
+        botauth: env.BOT.AUTH,
       },
     });
     console.log(JSON.stringify(response.data, null, 2));
