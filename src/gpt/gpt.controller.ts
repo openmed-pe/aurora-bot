@@ -4,13 +4,13 @@ import yenv from "yenv";
 import { GptDataModel, NameFuntions } from "./gpt.model";
 import { resolve } from "path";
 import {
-  ShowProducts,
+  ShowMedicines,
   SaveOrder,
-  AddProduct,
-  UpdateProduct,
+  AddMedicine,
+  UpdateMedicine,
   ShowOrder,
   AddUserInfo,
-  DeleteProduct,
+  DeleteMedicine,
   QuoteProducts,
 } from "../gpt/gpt.functions";
 import { IChat } from "../chats/chats.interface";
@@ -22,14 +22,14 @@ const openAi = new OpenAI({
 });
 
 var global = {
-  showProducts: ShowProducts,
+  showMedicines: ShowMedicines,
   saveOrder: SaveOrder,
-  addProduct: AddProduct,
-  updateProduct: UpdateProduct,
+  addMedicine: AddMedicine,
+  updateMedicine: UpdateMedicine,
   showOrder: ShowOrder,
   addUserInfo: AddUserInfo,
-  deleteProduct: DeleteProduct,
-  quoteProducts: QuoteProducts
+  deleteMedicine: DeleteMedicine,
+  quoteProducts: QuoteProducts,
 } satisfies Record<NameFuntions, any>;
 
 export class GptController {

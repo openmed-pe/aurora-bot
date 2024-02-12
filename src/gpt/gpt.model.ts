@@ -6,11 +6,11 @@ export interface GptDataModel {
 }
 
 export type NameFuntions =
-  | "showProducts"
+  | "showMedicines"
   | "saveOrder"
-  | "addProduct"
-  | "updateProduct"
+  | "addMedicine"
+  | "updateMedicine"
   | "showOrder"
-  | "deleteProduct"
+  | "deleteMedicine"
   | "addUserInfo"
   | "quoteProducts";
